@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>엔트로피 · 과제 관리</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg: #f4f7f5;
@@ -375,37 +376,18 @@
     'use strict';
 
     const STORAGE_KEYS = {
-      users: 'feedback-site-users-v1',
-      assignments: 'feedback-site-assignments-v1',
-      submissions: 'feedback-site-submissions-v1',
       session: 'feedback-site-session-v1',
       adminUnlocked: 'feedback-site-admin-unlocked-v1'
     };
+    const SUPABASE_URL = 'https://mehurfdcdwuwnpexqspc.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_mA0QPDxClZyGQCXNOD6TLg_RIteQ9eZ';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
     const ADMIN_PASSWORD = 'teacher-demo';
 
     const app = document.getElementById('app');
     const accountBar = document.getElementById('account-bar');
     const state = { openPanel: null, studentAssignmentId: null, teacherAssignmentId: null };
-
-    function read(key, fallback) {
-      try {
-        const value = JSON.parse(localStorage.getItem(key));
-        return value === null ? fallback : value;
-      } catch (error) {
-        return fallback;
-      }
-    }
-
-    function write(key, value) {
-      localStorage.setItem(key, JSON.stringify(value));
-    }
-
-    function makeId(prefix) {
-      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
-        return prefix + '-' + window.crypto.randomUUID();
-      }
-      return prefix + '-' + Date.now() + '-' + Math.random().toString(16).slice(2);
-    }
+    const appData = { users: [], assignments: [], submissions: [] };
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, (character) => ({
@@ -428,56 +410,129 @@
       return year + '-' + month + '-' + day;
     }
 
-    function ensureAccounts() {
-      const users = read(STORAGE_KEYS.users, []);
+    function userFromRow(row) {
+      return {
+        id: row.id,
+        username: row.username,
+        password: row.password,
+        role: row.role,
+        displayName: row.display_name
+      };
+    }
+
+    function assignmentFromRow(row) {
+      return {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        dueDate: row.due_date,
+        createdAt: row.created_at
+      };
+    }
+
+    function submissionFromRow(row) {
+      const student = appData.users.find((user) => user.id === row.student_id);
+      return {
+        id: row.id,
+        assignmentId: row.assignment_id,
+        studentId: row.student_id,
+        studentName: student?.displayName || '이름 없는 학생',
+        body: row.content,
+        submittedAt: row.first_submitted_at,
+        updatedAt: row.last_modified_at,
+        feedback: row.feedback,
+        feedbackAt: row.feedback_at
+      };
+    }
+
+    function replaceCachedSubmission(submission) {
+      const index = appData.submissions.findIndex((item) => item.id === submission.id);
+      if (index === -1) {
+        appData.submissions.push(submission);
+      } else {
+        appData.submissions[index] = submission;
+      }
+    }
+
+    function errorMessage(error, fallback) {
+      console.error(error);
+      return error?.message ? `${fallback}: ${error.message}` : fallback;
+    }
+
+    async function loadData() {
+      const [usersResult, assignmentsResult, submissionsResult] = await Promise.all([
+        supabaseClient.from('users').select('*'),
+        supabaseClient.from('assignments').select('*'),
+        supabaseClient.from('submissions').select('*')
+      ]);
+      if (usersResult.error) throw usersResult.error;
+      if (assignmentsResult.error) throw assignmentsResult.error;
+      if (submissionsResult.error) throw submissionsResult.error;
+
+      appData.users = (usersResult.data || []).map(userFromRow);
+      appData.assignments = (assignmentsResult.data || []).map(assignmentFromRow);
+      appData.submissions = (submissionsResult.data || []).map(submissionFromRow);
+    }
+
+    async function ensureAccounts() {
       const accounts = [
         {
-          id: 'teacher-demo',
           username: 'teacher',
           password: 'teacher-demo',
           role: 'teacher',
           displayName: '엔트로피 수업 선생님'
         },
         {
-          id: 'student-demo',
           username: 'student',
           password: 'student-demo',
           role: 'student',
           displayName: '엔트로피 수업 학생'
         }
       ];
-      const nextUsers = accounts.reduce((list, account) => {
-        return list.some((user) => user.role === account.role) ? list : list.concat(account);
-      }, users);
-      if (nextUsers.length !== users.length) write(STORAGE_KEYS.users, nextUsers);
-      return nextUsers;
+      for (const account of accounts) {
+        if (appData.users.some((user) => user.role === account.role)) continue;
+        const { data: row, error } = await supabaseClient
+          .from('users')
+          .insert({
+            username: account.username,
+            password: account.password,
+            role: account.role,
+            display_name: account.displayName
+          })
+          .select('*')
+          .single();
+        if (error) throw error;
+        appData.users.push(userFromRow(row));
+      }
+      return appData.users;
     }
 
     function currentUser() {
       const sessionId = sessionStorage.getItem(STORAGE_KEYS.session);
-      return ensureAccounts().find((user) => user.id === sessionId) || null;
+      return appData.users.find((user) => user.id === sessionId) || null;
     }
 
     function getAssignments() {
-      return read(STORAGE_KEYS.assignments, []).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      return appData.assignments.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
     }
 
     function getSubmissions() {
-      return read(STORAGE_KEYS.submissions, []);
+      return appData.submissions.slice();
     }
 
-    function saveAssignment(title, description, dueDate, sourceId) {
+    async function saveAssignment(title, description, dueDate, sourceId) {
       const source = sourceId ? getAssignments().find((assignment) => assignment.id === sourceId) : null;
-      const assignments = getAssignments();
-      const assignment = {
-        id: makeId('assignment'),
-        title: source ? source.title : title,
-        description: source ? source.description : description,
-        dueDate,
-        createdAt: new Date().toISOString(),
-        reusedFrom: source ? source.id : null
-      };
-      write(STORAGE_KEYS.assignments, assignments.concat(assignment));
+      const { data: row, error } = await supabaseClient
+        .from('assignments')
+        .insert({
+          title: source ? source.title : title,
+          description: source ? source.description : description,
+          due_date: dueDate
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+      appData.assignments.push(assignmentFromRow(row));
     }
 
     function assignmentStats(assignmentId) {
@@ -505,6 +560,31 @@
         state.teacherAssignmentId = null;
         render();
       });
+    }
+
+    function renderLoading() {
+      accountBar.classList.add('hidden');
+      app.innerHTML = `
+        <section class="login-wrap" aria-live="polite">
+          <div class="login-card">
+            <p class="eyebrow">Entropy feedback</p>
+            <h1>불러오는 중</h1>
+            <p class="intro">Supabase에서 과제와 제출 정보를 확인하고 있어요.</p>
+          </div>
+        </section>`;
+    }
+
+    function renderLoadError(error) {
+      accountBar.classList.add('hidden');
+      app.innerHTML = `
+        <section class="login-wrap" aria-labelledby="load-error-title">
+          <div class="login-card">
+            <p class="eyebrow">Entropy feedback</p>
+            <h1 id="load-error-title">데이터를 불러오지 못했어요</h1>
+            <p class="intro">Supabase 연결 또는 테이블 권한을 확인한 뒤 페이지를 새로고침해 주세요.</p>
+            <p class="form-message">${escapeHtml(errorMessage(error, '연결 오류'))}</p>
+          </div>
+        </section>`;
     }
 
     function render() {
@@ -546,12 +626,11 @@
           </div>
         </section>`;
 
-      ensureAccounts();
       document.getElementById('login-form').addEventListener('submit', (event) => {
         event.preventDefault();
         const username = document.getElementById('login-username').value.trim();
         const password = document.getElementById('login-password').value;
-        const user = ensureAccounts().find((account) => account.username === username && account.password === password);
+        const user = appData.users.find((account) => account.username === username && account.password === password);
         const message = document.getElementById('login-message');
         if (!user) {
           message.textContent = '아이디 또는 비밀번호가 일치하지 않습니다.';
@@ -720,32 +799,32 @@
         state.studentAssignmentId = null;
         render();
       });
-      document.getElementById('student-submission-form').addEventListener('submit', (event) => {
+      document.getElementById('student-submission-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         if (isPastDue(assignment.dueDate)) {
           document.getElementById('student-message').textContent = '마감일이 지나 제출하거나 수정할 수 없습니다.';
           return;
         }
         const body = document.getElementById('student-response').value.trim();
-        const submissions = getSubmissions();
-        const existingIndex = submissions.findIndex((item) => item.assignmentId === assignment.id && item.studentId === student.id);
-        const timestamp = new Date().toISOString();
-        if (existingIndex === -1) {
-          submissions.push({
-            id: makeId('submission'),
-            assignmentId: assignment.id,
-            studentId: student.id,
-            studentName: student.displayName,
-            body,
-            submittedAt: timestamp,
-            updatedAt: timestamp,
-            feedbackAt: null
-          });
-        } else {
-          submissions[existingIndex] = { ...submissions[existingIndex], body, updatedAt: timestamp };
+        const message = document.getElementById('student-message');
+        const submitButton = document.getElementById('student-submit-button');
+        submitButton.disabled = true;
+        try {
+          const existing = getStudentSubmission(assignment.id, student.id);
+          const payload = existing
+            ? { content: body, last_modified_at: new Date().toISOString() }
+            : { assignment_id: assignment.id, student_id: student.id, content: body };
+          const query = existing
+            ? supabaseClient.from('submissions').update(payload).eq('id', existing.id)
+            : supabaseClient.from('submissions').insert(payload);
+          const { data: row, error } = await query.select('*').single();
+          if (error) throw error;
+          replaceCachedSubmission(submissionFromRow(row));
+          render();
+        } catch (error) {
+          message.textContent = errorMessage(error, '글을 저장하지 못했습니다');
+          submitButton.disabled = false;
         }
-        write(STORAGE_KEYS.submissions, submissions);
-        render();
       });
     }
 
@@ -826,7 +905,7 @@
         render();
       });
       document.querySelectorAll('[data-save-feedback]').forEach((button) => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
           const submissionId = button.dataset.saveFeedback;
           const field = document.querySelector(`[data-feedback-field="${submissionId}"]`);
           const message = document.querySelector(`[data-feedback-message="${submissionId}"]`);
@@ -838,9 +917,21 @@
           const submissions = getSubmissions();
           const index = submissions.findIndex((submission) => submission.id === submissionId);
           if (index === -1) return;
-          submissions[index] = { ...submissions[index], feedback, feedbackAt: new Date().toISOString() };
-          write(STORAGE_KEYS.submissions, submissions);
-          render();
+          button.disabled = true;
+          try {
+            const { data: row, error } = await supabaseClient
+              .from('submissions')
+              .update({ feedback, feedback_at: new Date().toISOString() })
+              .eq('id', submissionId)
+              .select('*')
+              .single();
+            if (error) throw error;
+            replaceCachedSubmission(submissionFromRow(row));
+            render();
+          } catch (error) {
+            message.textContent = errorMessage(error, '피드백을 저장하지 못했습니다');
+            button.disabled = false;
+          }
         });
       });
     }
@@ -980,7 +1071,7 @@
 
     function bindNewAssignmentForm() {
       bindCloseButtons();
-      document.getElementById('new-assignment-form').addEventListener('submit', (event) => {
+      document.getElementById('new-assignment-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         const title = document.getElementById('new-title').value.trim();
         const description = document.getElementById('new-description').value.trim();
@@ -990,9 +1081,16 @@
           message.textContent = '제목, 설명, 마감일을 모두 입력해 주세요.';
           return;
         }
-        saveAssignment(title, description, dueDate, null);
-        state.openPanel = null;
-        render();
+        const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        try {
+          await saveAssignment(title, description, dueDate, null);
+          state.openPanel = null;
+          render();
+        } catch (error) {
+          message.textContent = errorMessage(error, '과제를 저장하지 못했습니다');
+          submitButton.disabled = false;
+        }
       });
     }
 
@@ -1004,7 +1102,7 @@
         const source = getAssignments().find((assignment) => assignment.id === select.value);
         preview.textContent = source ? `가져올 제목: ${source.title} · 설명: ${source.description}` : '과제를 선택하면 가져올 제목과 설명이 여기에 표시됩니다.';
       });
-      document.getElementById('reuse-assignment-form').addEventListener('submit', (event) => {
+      document.getElementById('reuse-assignment-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         const sourceId = select.value;
         const dueDate = document.getElementById('reuse-due-date').value;
@@ -1013,14 +1111,31 @@
           message.textContent = '이전 과제와 새 마감일을 선택해 주세요.';
           return;
         }
-        saveAssignment('', '', dueDate, sourceId);
-        state.openPanel = null;
-        render();
+        const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        try {
+          await saveAssignment('', '', dueDate, sourceId);
+          state.openPanel = null;
+          render();
+        } catch (error) {
+          message.textContent = errorMessage(error, '과제를 저장하지 못했습니다');
+          submitButton.disabled = false;
+        }
       });
     }
 
-    ensureAccounts();
-    render();
+    async function initialize() {
+      renderLoading();
+      try {
+        await loadData();
+        await ensureAccounts();
+        render();
+      } catch (error) {
+        renderLoadError(error);
+      }
+    }
+
+    initialize();
   </script>
 </body>
 </html>

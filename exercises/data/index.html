@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>엔트로피 · 과제 관리</title>
+  <style>
+    :root {
+      --bg: #f4f7f5;
+      --surface: #ffffff;
+      --surface-soft: #f7faf8;
+      --ink: #1f2a24;
+      --muted: #68756d;
+      --line: #dce6df;
+      --primary: #20704b;
+      --primary-dark: #155436;
+      --primary-soft: #e6f3eb;
+      --warning: #9a5a08;
+      --warning-soft: #fff4dc;
+      --danger: #b42318;
+      --shadow: 0 18px 44px rgba(31, 61, 45, .08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: "Segoe UI", "Noto Sans KR", system-ui, sans-serif;
+      line-height: 1.55;
+      word-break: keep-all;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    a { color: var(--primary); }
+
+    .app-shell { min-height: 100vh; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 72px;
+      padding: 16px max(24px, calc((100vw - 1120px) / 2));
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      color: #fff;
+      background: var(--primary);
+      border-radius: 12px;
+      font-size: 20px;
+    }
+    .brand strong { display: block; font-size: 15px; letter-spacing: -.02em; }
+    .brand span { display: block; color: var(--muted); font-size: 12px; }
+    .account-bar { display: flex; align-items: center; gap: 12px; }
+    .account-name { color: var(--muted); font-size: 14px; }
+
+    main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 48px 0 72px; }
+    .login-wrap { display: grid; min-height: calc(100vh - 72px); place-items: center; padding: 24px 0 72px; }
+    .login-card { width: min(440px, 100%); padding: 36px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); }
+    .login-card h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: -.04em; }
+    .eyebrow { margin: 0 0 10px; color: var(--primary); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .intro { margin: 0 0 28px; color: var(--muted); }
+    .demo-note { margin-top: 20px; padding: 12px 14px; color: #496056; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px; font-size: 13px; }
+
+    .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
+    .page-heading h1 { margin: 0; font-size: clamp(28px, 4vw, 42px); letter-spacing: -.055em; line-height: 1.18; }
+    .page-heading p { max-width: 600px; margin: 10px 0 0; color: var(--muted); }
+    .heading-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 9px 16px;
+      color: #fff;
+      background: var(--primary);
+      border: 1px solid var(--primary);
+      border-radius: 10px;
+      font-weight: 700;
+      transition: background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    .button:hover { background: var(--primary-dark); border-color: var(--primary-dark); transform: translateY(-1px); }
+    .button.secondary { color: var(--primary-dark); background: var(--surface); border-color: var(--line); }
+    .button.secondary:hover { background: var(--primary-soft); border-color: #a9ceb7; }
+    .button.full { width: 100%; }
+
+    .panel { margin-bottom: 28px; padding: 26px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 8px 24px rgba(31, 61, 45, .04); }
+    .panel-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+    .panel-header h2 { margin: 0; font-size: 20px; letter-spacing: -.03em; }
+    .panel-header p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+    .form-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(180px, .6fr); gap: 0 18px; }
+    .field { margin-bottom: 18px; }
+    .field.wide { grid-column: 1 / -1; }
+    label { display: block; margin-bottom: 7px; font-size: 14px; font-weight: 700; }
+    input, textarea, select {
+      width: 100%;
+      padding: 11px 12px;
+      color: var(--ink);
+      background: var(--surface);
+      border: 1px solid #cbd8cf;
+      border-radius: 10px;
+      outline: none;
+    }
+    textarea { min-height: 108px; resize: vertical; }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(32, 112, 75, .12); }
+    .help { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+    .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .form-message { min-height: 22px; color: var(--danger); font-size: 13px; }
+    .form-message.success { color: var(--primary-dark); }
+
+    .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 0 14px; }
+    .section-heading h2 { margin: 0; font-size: 20px; letter-spacing: -.03em; }
+    .count-label { color: var(--muted); font-size: 13px; }
+    .assignment-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
+    .assignment-card { padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+    .assignment-card h3 { margin: 0; font-size: 19px; letter-spacing: -.03em; }
+    .assignment-description { min-height: 49px; margin: 9px 0 18px; color: var(--muted); font-size: 14px; white-space: pre-line; }
+    .assignment-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .meta-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; color: #476056; background: var(--surface-soft); border-radius: 8px; font-size: 12px; }
+    .meta-chip strong { color: var(--ink); font-size: 14px; }
+    .due-date { display: flex; align-items: center; gap: 7px; padding-top: 14px; color: var(--muted); border-top: 1px solid var(--line); font-size: 13px; }
+    .assignment-card-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+    .submission-list { display: grid; gap: 16px; }
+    .submission-card { padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+    .submission-card-header { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
+    .submission-card h3 { margin: 0; font-size: 18px; letter-spacing: -.03em; }
+    .submission-time { color: var(--muted); font-size: 12px; }
+    .submission-content { margin: 18px 0; padding: 16px; background: var(--surface-soft); border-radius: 12px; white-space: pre-wrap; }
+    .feedback-saved { margin-top: 18px; padding: 16px; color: var(--primary-dark); background: var(--primary-soft); border-radius: 12px; }
+    .feedback-saved strong { display: block; margin-bottom: 6px; }
+    .feedback-saved p { margin: 0; white-space: pre-wrap; }
+    .status-pill { display: inline-flex; padding: 5px 9px; border-radius: 999px; color: var(--warning); background: var(--warning-soft); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .status-pill.done { color: var(--primary-dark); background: var(--primary-soft); }
+    .student-assignment-list { display: grid; gap: 14px; }
+    .student-assignment-card { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+    .student-assignment-card h3 { margin: 0; font-size: 19px; letter-spacing: -.03em; }
+    .student-assignment-card .assignment-description { min-height: 0; margin-bottom: 12px; }
+    .student-assignment-card .due-date { padding-top: 0; border-top: 0; }
+    .student-assignment-actions { display: flex; flex-shrink: 0; flex-direction: column; align-items: flex-end; gap: 10px; }
+    .student-status { display: inline-flex; padding: 5px 9px; color: var(--primary-dark); background: var(--primary-soft); border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .student-status.pending { color: var(--warning); background: var(--warning-soft); }
+    .student-status.closed { color: var(--muted); background: #eef1ef; }
+    .student-status.feedback { color: var(--primary-dark); background: var(--primary-soft); }
+    .student-detail { max-width: 760px; margin: 0 auto; }
+    .student-detail .assignment-description { min-height: 0; margin: 12px 0 18px; }
+    .student-detail-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+    .submission-preview { margin-top: 22px; padding: 18px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px; }
+    .submission-preview h3 { margin: 0 0 8px; font-size: 15px; }
+    .submission-body { margin: 0; white-space: pre-wrap; }
+    .submission-time { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+    .student-feedback { margin-top: 14px; padding: 16px; background: var(--primary-soft); border-radius: 12px; }
+    .student-feedback h3 { margin: 0 0 8px; color: var(--primary-dark); font-size: 15px; }
+    .student-feedback p { margin: 0; white-space: pre-wrap; }
+    .student-feedback .submission-time { margin-top: 10px; color: #4e6e5c; }
+    .student-feedback.pending { background: var(--surface-soft); }
+    .student-feedback.pending h3 { color: var(--ink); }
+    .student-feedback.pending p { color: var(--muted); }
+    .empty-state { padding: 42px 20px; color: var(--muted); background: var(--surface); border: 1px dashed #b9c9be; border-radius: 16px; text-align: center; }
+    .empty-state strong { display: block; margin-bottom: 5px; color: var(--ink); }
+
+    .hidden { display: none !important; }
+    @media (max-width: 700px) {
+      .topbar { padding: 13px 18px; }
+      .account-name { display: none; }
+      main { width: min(100% - 32px, 1120px); padding-top: 32px; }
+      .page-heading { display: block; }
+      .heading-actions { justify-content: flex-start; margin-top: 20px; }
+      .form-grid { display: block; }
+      .login-card { padding: 28px 22px; }
+      .panel { padding: 20px; }
+      .student-assignment-card { display: block; }
+      .student-assignment-actions { align-items: flex-start; margin-top: 18px; }
+    }
+
+    /* Lovable-inspired visual layer: warm cream, editorial type, quiet borders. */
+    :root {
+      --bg: #f7f4ed;
+      --surface: #f7f4ed;
+      --surface-soft: rgba(28, 28, 28, .04);
+      --ink: #1c1c1c;
+      --muted: #5f5f5d;
+      --line: #eceae4;
+      --primary: #1c1c1c;
+      --primary-dark: #1c1c1c;
+      --primary-soft: rgba(28, 28, 28, .04);
+      --warning: rgba(28, 28, 28, .82);
+      --warning-soft: rgba(28, 28, 28, .04);
+      --danger: #1c1c1c;
+      --shadow: none;
+      --button-inset: rgba(255, 255, 255, .2) 0 .5px 0 0 inset, rgba(0, 0, 0, .2) 0 0 0 .5px inset, rgba(0, 0, 0, .05) 0 1px 2px 0;
+      --focus-shadow: rgba(0, 0, 0, .1) 0 4px 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Camera Plain Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+    a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      min-height: 72px;
+      padding: 16px max(24px, calc((100vw - 1200px) / 2));
+      background: rgba(247, 244, 237, .92);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+    }
+    .brand { gap: 12px; }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      color: var(--off-white, #fcfbf8);
+      background: var(--ink);
+      border: 1px solid var(--ink);
+      border-radius: 9999px;
+      box-shadow: var(--button-inset);
+      font-size: 18px;
+    }
+    .brand strong { color: var(--ink); font-size: 16px; font-weight: 600; letter-spacing: -.02em; }
+    .brand span { color: var(--muted); font-size: 13px; }
+    .account-bar { gap: 14px; }
+    .account-name { color: var(--muted); font-size: 14px; }
+
+    main { width: min(1200px, calc(100% - 48px)); padding: 72px 0 112px; }
+    .login-wrap {
+      min-height: calc(100vh - 72px);
+      padding: 40px 0 96px;
+      background: radial-gradient(circle at 50% 28%, rgba(255, 201, 139, .14), transparent 42%);
+    }
+    .login-card {
+      width: min(480px, 100%);
+      padding: 44px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: none;
+    }
+    .login-card h1 {
+      margin: 0 0 12px;
+      color: var(--ink);
+      font-size: clamp(36px, 6vw, 48px);
+      font-weight: 600;
+      letter-spacing: -1.2px;
+      line-height: 1.05;
+    }
+    .eyebrow { color: var(--muted); font-size: 13px; font-weight: 400; letter-spacing: .12em; }
+    .intro { color: var(--muted); font-size: 16px; line-height: 1.5; }
+    .demo-note { color: var(--muted); background: rgba(28, 28, 28, .03); border: 1px solid var(--line); border-radius: 8px; }
+
+    .page-heading { align-items: flex-start; margin-bottom: 56px; gap: 32px; }
+    .page-heading h1 {
+      color: var(--ink);
+      font-size: clamp(36px, 5vw, 60px);
+      font-weight: 600;
+      letter-spacing: -1.5px;
+      line-height: 1.05;
+    }
+    .page-heading p { color: var(--muted); font-size: 18px; line-height: 1.38; }
+    .heading-actions { gap: 10px; }
+
+    .button {
+      min-height: 40px;
+      padding: 8px 16px;
+      color: #fcfbf8;
+      background: var(--ink);
+      border: 1px solid var(--ink);
+      border-radius: 6px;
+      font-weight: 400;
+      box-shadow: var(--button-inset);
+      transition: opacity .15s ease, box-shadow .15s ease;
+    }
+    .button:hover { background: var(--ink); border-color: var(--ink); opacity: .82; transform: none; }
+    .button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid rgba(59, 130, 246, .5); outline-offset: 2px; box-shadow: var(--focus-shadow); }
+    .button.secondary {
+      color: var(--ink);
+      background: transparent;
+      border-color: rgba(28, 28, 28, .4);
+      box-shadow: none;
+    }
+    .button.secondary:hover { color: var(--ink); background: rgba(28, 28, 28, .04); border-color: rgba(28, 28, 28, .4); opacity: .82; }
+
+    .panel {
+      margin-bottom: 32px;
+      padding: 32px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: none;
+    }
+    .panel-header { margin-bottom: 24px; }
+    .panel-header h2, .section-heading h2 { color: var(--ink); font-weight: 600; letter-spacing: -.6px; }
+    .panel-header p { color: var(--muted); }
+    label { color: var(--ink); font-weight: 400; }
+    input, textarea, select {
+      color: var(--ink);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+    input::placeholder, textarea::placeholder { color: var(--muted); }
+    input:focus, textarea:focus, select:focus { border-color: rgba(28, 28, 28, .4); box-shadow: var(--focus-shadow); }
+    .help, .count-label, .submission-time { color: var(--muted); }
+    .form-message { color: var(--ink); }
+    .form-message.success { color: var(--ink); }
+
+    .section-heading { margin-bottom: 18px; }
+    .assignment-list { gap: 18px; }
+    .assignment-card, .submission-card, .student-assignment-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: none;
+    }
+    .assignment-card { padding: 24px; }
+    .assignment-card h3, .submission-card h3, .student-assignment-card h3 { color: var(--ink); font-weight: 400; letter-spacing: normal; }
+    .assignment-description { color: var(--muted); }
+    .assignment-meta { gap: 10px; }
+    .meta-chip { color: var(--muted); background: rgba(28, 28, 28, .04); border-radius: 6px; }
+    .meta-chip strong { color: var(--ink); font-weight: 600; }
+    .due-date { color: var(--muted); border-color: var(--line); }
+    .assignment-card-actions { margin-top: 20px; }
+    .submission-content, .submission-preview { background: rgba(28, 28, 28, .03); border: 1px solid var(--line); border-radius: 8px; }
+    .feedback-saved, .student-feedback { color: var(--ink); background: rgba(28, 28, 28, .04); border: 1px solid var(--line); border-radius: 8px; }
+    .feedback-saved strong, .student-feedback h3 { color: var(--ink); font-weight: 600; }
+    .feedback-saved p, .student-feedback p { color: var(--ink); }
+    .status-pill, .student-status { color: var(--ink); background: rgba(28, 28, 28, .04); border: 1px solid var(--line); font-weight: 400; }
+    .status-pill.done, .student-status.feedback { color: var(--ink); background: rgba(28, 28, 28, .08); }
+    .student-status.pending { color: var(--muted); background: transparent; }
+    .student-status.closed { color: var(--muted); background: rgba(28, 28, 28, .03); }
+    .student-feedback.pending { background: transparent; }
+    .student-feedback.pending h3, .student-feedback.pending p { color: var(--muted); }
+    .empty-state { color: var(--muted); background: var(--surface); border-color: var(--line); border-radius: 12px; }
+    .empty-state strong { color: var(--ink); font-weight: 600; }
+
+    @media (max-width: 700px) {
+      .topbar { padding: 13px 18px; }
+      main { width: min(100% - 32px, 1200px); padding-top: 48px; }
+      .page-heading { margin-bottom: 40px; }
+      .page-heading h1 { font-size: clamp(36px, 12vw, 48px); }
+      .page-heading p { font-size: 16px; }
+      .login-card { padding: 32px 24px; }
+      .panel { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">∑</div>
+        <div>
+          <strong>엔트로피 피드백</strong>
+          <span>챕터 3 · 과제 관리</span>
+        </div>
+      </div>
+      <div id="account-bar" class="account-bar hidden"></div>
+    </header>
+    <main id="app" aria-live="polite"></main>
+  </div>
+
+  <script>
+    'use strict';
+
+    const STORAGE_KEYS = {
+      users: 'feedback-site-users-v1',
+      assignments: 'feedback-site-assignments-v1',
+      submissions: 'feedback-site-submissions-v1',
+      session: 'feedback-site-session-v1',
+      adminUnlocked: 'feedback-site-admin-unlocked-v1'
+    };
+    const ADMIN_PASSWORD = 'teacher-demo';
+
+    const app = document.getElementById('app');
+    const accountBar = document.getElementById('account-bar');
+    const state = { openPanel: null, studentAssignmentId: null, teacherAssignmentId: null };
+
+    function read(key, fallback) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key));
+        return value === null ? fallback : value;
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    function write(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function makeId(prefix) {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return prefix + '-' + window.crypto.randomUUID();
+      }
+      return prefix + '-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[character]));
+    }
+
+    function formatDueDate(value) {
+      if (!value) return '마감일 없음';
+      const date = new Date(value + 'T00:00:00');
+      if (Number.isNaN(date.getTime())) return value;
+      return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+    }
+
+    function todayValue() {
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return year + '-' + month + '-' + day;
+    }
+
+    function ensureAccounts() {
+      const users = read(STORAGE_KEYS.users, []);
+      const accounts = [
+        {
+          id: 'teacher-demo',
+          username: 'teacher',
+          password: 'teacher-demo',
+          role: 'teacher',
+          displayName: '엔트로피 수업 선생님'
+        },
+        {
+          id: 'student-demo',
+          username: 'student',
+          password: 'student-demo',
+          role: 'student',
+          displayName: '엔트로피 수업 학생'
+        }
+      ];
+      const nextUsers = accounts.reduce((list, account) => {
+        return list.some((user) => user.role === account.role) ? list : list.concat(account);
+      }, users);
+      if (nextUsers.length !== users.length) write(STORAGE_KEYS.users, nextUsers);
+      return nextUsers;
+    }
+
+    function currentUser() {
+      const sessionId = sessionStorage.getItem(STORAGE_KEYS.session);
+      return ensureAccounts().find((user) => user.id === sessionId) || null;
+    }
+
+    function getAssignments() {
+      return read(STORAGE_KEYS.assignments, []).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    }
+
+    function getSubmissions() {
+      return read(STORAGE_KEYS.submissions, []);
+    }
+
+    function saveAssignment(title, description, dueDate, sourceId) {
+      const source = sourceId ? getAssignments().find((assignment) => assignment.id === sourceId) : null;
+      const assignments = getAssignments();
+      const assignment = {
+        id: makeId('assignment'),
+        title: source ? source.title : title,
+        description: source ? source.description : description,
+        dueDate,
+        createdAt: new Date().toISOString(),
+        reusedFrom: source ? source.id : null
+      };
+      write(STORAGE_KEYS.assignments, assignments.concat(assignment));
+    }
+
+    function assignmentStats(assignmentId) {
+      const submissions = getSubmissions().filter((submission) => submission.assignmentId === assignmentId);
+      const studentIds = new Set(submissions.map((submission) => submission.studentId || submission.studentName || submission.id));
+      return {
+        submitted: studentIds.size,
+        waiting: submissions.filter((submission) => !submission.feedbackAt).length
+      };
+    }
+
+    function setAccountBar(user) {
+      if (!user) {
+        accountBar.classList.add('hidden');
+        accountBar.innerHTML = '';
+        return;
+      }
+      accountBar.classList.remove('hidden');
+      accountBar.innerHTML = `<span class="account-name">${escapeHtml(user.displayName)}</span><button type="button" class="button secondary" id="logout-button">로그아웃</button>`;
+      document.getElementById('logout-button').addEventListener('click', () => {
+        sessionStorage.removeItem(STORAGE_KEYS.session);
+        sessionStorage.removeItem(STORAGE_KEYS.adminUnlocked);
+        state.openPanel = null;
+        state.studentAssignmentId = null;
+        state.teacherAssignmentId = null;
+        render();
+      });
+    }
+
+    function render() {
+      const user = currentUser();
+      setAccountBar(user);
+      if (user?.role === 'teacher') {
+        if (sessionStorage.getItem(STORAGE_KEYS.adminUnlocked) === '1') {
+          renderTeacherDashboard(user);
+        } else {
+          renderAdminGate();
+        }
+      } else if (user?.role === 'student') {
+        renderStudentDashboard(user);
+      } else {
+        renderLogin();
+      }
+    }
+
+    function renderLogin() {
+      app.innerHTML = `
+        <section class="login-wrap" aria-labelledby="login-title">
+          <div class="login-card">
+            <p class="eyebrow">Entropy feedback</p>
+            <h1 id="login-title">로그인</h1>
+            <p class="intro">선생님은 과제를 관리하고, 학생은 자기 과제를 확인해 보세요.</p>
+            <form id="login-form" novalidate>
+              <div class="field">
+                <label for="login-username">아이디</label>
+                <input id="login-username" name="username" autocomplete="username" required>
+              </div>
+              <div class="field">
+                <label for="login-password">비밀번호</label>
+                <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+              </div>
+              <p id="login-message" class="form-message" role="alert"></p>
+              <button class="button full" type="submit">로그인</button>
+            </form>
+            <div class="demo-note">실습용 계정 · 선생님 <strong>teacher / teacher-demo</strong> · 학생 <strong>student / student-demo</strong></div>
+          </div>
+        </section>`;
+
+      ensureAccounts();
+      document.getElementById('login-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        const user = ensureAccounts().find((account) => account.username === username && account.password === password);
+        const message = document.getElementById('login-message');
+        if (!user) {
+          message.textContent = '아이디 또는 비밀번호가 일치하지 않습니다.';
+          return;
+        }
+        sessionStorage.setItem(STORAGE_KEYS.session, user.id);
+        state.openPanel = null;
+        state.studentAssignmentId = null;
+        state.teacherAssignmentId = null;
+        render();
+      });
+    }
+
+    function renderAdminGate() {
+      app.innerHTML = `
+        <section class="login-wrap" aria-labelledby="admin-gate-title">
+          <div class="login-card">
+            <p class="eyebrow">Admin access</p>
+            <h1 id="admin-gate-title">선생님 화면 잠금</h1>
+            <p class="intro">학생 글과 선생님만 보는 내용이 있는 관리자 화면입니다. 관리자 비밀번호를 입력해야 열 수 있어요.</p>
+            <form id="admin-gate-form" novalidate>
+              <div class="field">
+                <label for="admin-password">관리자 비밀번호</label>
+                <input id="admin-password" type="password" autocomplete="off" required>
+              </div>
+              <p id="admin-gate-message" class="form-message" role="alert"></p>
+              <button class="button full" type="submit">선생님 화면 열기</button>
+            </form>
+          </div>
+        </section>`;
+      document.getElementById('admin-gate-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const password = document.getElementById('admin-password').value;
+        const message = document.getElementById('admin-gate-message');
+        if (password !== ADMIN_PASSWORD) {
+          message.textContent = '관리자 비밀번호가 맞지 않습니다.';
+          return;
+        }
+        sessionStorage.setItem(STORAGE_KEYS.adminUnlocked, '1');
+        render();
+      });
+    }
+
+    function getStudentSubmission(assignmentId, studentId) {
+      return getSubmissions().find((submission) => submission.assignmentId === assignmentId && submission.studentId === studentId) || null;
+    }
+
+    function isPastDue(dueDate) {
+      if (!dueDate) return false;
+      const deadline = new Date(dueDate + 'T23:59:59.999');
+      return !Number.isNaN(deadline.getTime()) && Date.now() > deadline.getTime();
+    }
+
+    function formatSubmittedAt(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+    }
+
+    function renderStudentDashboard(student) {
+      const assignments = getAssignments();
+      const selectedAssignment = assignments.find((assignment) => assignment.id === state.studentAssignmentId);
+      if (selectedAssignment) {
+        renderStudentAssignment(student, selectedAssignment);
+        return;
+      }
+      state.studentAssignmentId = null;
+      app.innerHTML = `
+        <section aria-labelledby="student-dashboard-title">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">Student workspace</p>
+              <h1 id="student-dashboard-title">내 과제</h1>
+              <p>내 과제의 설명과 마감일을 확인하고, 내가 쓴 글을 제출하거나 수정할 수 있어요.</p>
+            </div>
+          </div>
+          <div class="section-heading">
+            <h2>과제 목록</h2>
+            <span class="count-label">${assignments.length}개</span>
+          </div>
+          <div class="student-assignment-list">
+            ${assignments.length ? assignments.map((assignment) => studentAssignmentCard(assignment, student.id)).join('') : emptyStudentAssignmentState()}
+          </div>
+        </section>`;
+      document.querySelectorAll('[data-open-student-assignment]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.studentAssignmentId = button.dataset.openStudentAssignment;
+          render();
+        });
+      });
+    }
+
+    function studentAssignmentCard(assignment, studentId) {
+      const submission = getStudentSubmission(assignment.id, studentId);
+      const closed = isPastDue(assignment.dueDate);
+      const statusClass = submission?.feedbackAt ? 'feedback' : closed ? 'closed' : submission ? '' : 'pending';
+      const statusText = submission?.feedbackAt ? '피드백 도착' : closed ? '마감됨' : submission ? '제출 완료' : '제출 전';
+      const actionText = closed ? '내용 보기' : submission ? '다시 열기' : '과제 열기';
+      return `
+        <article class="student-assignment-card">
+          <div>
+            <h3>${escapeHtml(assignment.title)}</h3>
+            <p class="assignment-description">${escapeHtml(assignment.description || '설명이 없습니다.')}</p>
+            <div class="due-date"><span aria-hidden="true">◷</span><span>마감일 · ${escapeHtml(formatDueDate(assignment.dueDate))}</span></div>
+          </div>
+          <div class="student-assignment-actions">
+            <span class="student-status ${statusClass}">${statusText}</span>
+            <button type="button" class="button secondary" data-open-student-assignment="${escapeHtml(assignment.id)}">${actionText}</button>
+          </div>
+        </article>`;
+    }
+
+    function emptyStudentAssignmentState() {
+      return '<div class="empty-state"><strong>아직 과제가 없습니다.</strong><span>선생님이 과제를 만들면 이곳에서 확인할 수 있어요.</span></div>';
+    }
+
+    function renderStudentAssignment(student, assignment) {
+      const submission = getStudentSubmission(assignment.id, student.id);
+      const closed = isPastDue(assignment.dueDate);
+      const submissionBody = submission?.body || '';
+      app.innerHTML = `
+        <section class="student-detail" aria-labelledby="student-assignment-title">
+          <button type="button" class="button secondary" id="student-back-button">← 과제 목록</button>
+          <div class="panel" style="margin-top:18px">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">My assignment</p>
+                <h1 id="student-assignment-title">${escapeHtml(assignment.title)}</h1>
+                <p class="assignment-description">${escapeHtml(assignment.description || '설명이 없습니다.')}</p>
+              </div>
+            </div>
+            <div class="student-detail-meta">
+              <span class="meta-chip">마감일 <strong>${escapeHtml(formatDueDate(assignment.dueDate))}</strong></span>
+              <span class="meta-chip">상태 <strong>${closed ? '마감됨' : submission ? '제출 완료' : '제출 전'}</strong></span>
+            </div>
+            <form id="student-submission-form" novalidate>
+              <div class="field">
+                <label for="student-response">내 글</label>
+                <textarea id="student-response" ${closed ? 'disabled' : ''} placeholder="수업에서 이해한 내용을 내 말로 자유롭게 써 보세요.">${escapeHtml(submissionBody)}</textarea>
+                <p class="help">${closed ? '마감일이 지나 새로 제출하거나 수정할 수 없습니다.' : submission ? '마감 전에는 이 글을 다시 수정할 수 있어요.' : '글자 수 제한 없이 자유롭게 작성할 수 있어요.'}</p>
+              </div>
+              <p id="student-message" class="form-message" role="alert"></p>
+              <button type="submit" class="button" id="student-submit-button" ${closed ? 'disabled' : ''}>${submission ? '수정 저장' : '글 제출'}</button>
+            </form>
+            ${submission ? `
+              <div class="submission-preview">
+                <h3>내가 제출한 글</h3>
+                <p class="submission-body">${escapeHtml(submissionBody || '작성한 내용 없이 제출됨')}</p>
+                <p class="submission-time">${submission.updatedAt && submission.updatedAt !== submission.submittedAt ? '마지막 수정' : '제출'} · ${escapeHtml(formatSubmittedAt(submission.updatedAt || submission.submittedAt))}</p>
+                ${submission.feedbackAt ? `
+                  <div class="student-feedback">
+                    <h3>선생님 피드백</h3>
+                    <p>${escapeHtml(submission.feedback || '선생님이 피드백을 저장했습니다.')}</p>
+                    <p class="submission-time">피드백 저장 · ${escapeHtml(formatSubmittedAt(submission.feedbackAt))}</p>
+                  </div>` : `
+                  <div class="student-feedback pending">
+                    <h3>선생님 피드백</h3>
+                    <p>아직 선생님 피드백이 없어요.</p>
+                  </div>`}
+              </div>` : ''}
+          </div>
+        </section>`;
+
+      document.getElementById('student-back-button').addEventListener('click', () => {
+        state.studentAssignmentId = null;
+        render();
+      });
+      document.getElementById('student-submission-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (isPastDue(assignment.dueDate)) {
+          document.getElementById('student-message').textContent = '마감일이 지나 제출하거나 수정할 수 없습니다.';
+          return;
+        }
+        const body = document.getElementById('student-response').value.trim();
+        const submissions = getSubmissions();
+        const existingIndex = submissions.findIndex((item) => item.assignmentId === assignment.id && item.studentId === student.id);
+        const timestamp = new Date().toISOString();
+        if (existingIndex === -1) {
+          submissions.push({
+            id: makeId('submission'),
+            assignmentId: assignment.id,
+            studentId: student.id,
+            studentName: student.displayName,
+            body,
+            submittedAt: timestamp,
+            updatedAt: timestamp,
+            feedbackAt: null
+          });
+        } else {
+          submissions[existingIndex] = { ...submissions[existingIndex], body, updatedAt: timestamp };
+        }
+        write(STORAGE_KEYS.submissions, submissions);
+        render();
+      });
+    }
+
+    function renderTeacherDashboard(teacher) {
+      const assignments = getAssignments();
+      const selectedAssignment = assignments.find((assignment) => assignment.id === state.teacherAssignmentId);
+      if (selectedAssignment) {
+        renderTeacherSubmissions(teacher, selectedAssignment);
+        return;
+      }
+      state.teacherAssignmentId = null;
+      const panel = state.openPanel;
+      app.innerHTML = `
+        <section aria-labelledby="dashboard-title">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">Teacher dashboard</p>
+              <h1 id="dashboard-title">과제 현황</h1>
+              <p>새 과제를 만들거나 이전 과제를 다시 사용하고, 제출 인원과 미피드백 글 수를 확인하세요.</p>
+            </div>
+            <div class="heading-actions">
+              <button type="button" class="button secondary" id="reuse-button">이전 과제 다시 사용</button>
+              <button type="button" class="button" id="new-button">+ 새 과제 만들기</button>
+            </div>
+          </div>
+          ${panel === 'new' ? newAssignmentPanel() : ''}
+          ${panel === 'reuse' ? reuseAssignmentPanel(assignments) : ''}
+          <div class="section-heading">
+            <h2>내 과제</h2>
+            <span class="count-label">${assignments.length}개</span>
+          </div>
+          <div class="assignment-list">
+            ${assignments.length ? assignments.map(assignmentCard).join('') : emptyAssignmentState()}
+          </div>
+        </section>`;
+
+      document.getElementById('new-button').addEventListener('click', () => {
+        state.openPanel = state.openPanel === 'new' ? null : 'new';
+        render();
+      });
+      document.getElementById('reuse-button').addEventListener('click', () => {
+        state.openPanel = state.openPanel === 'reuse' ? null : 'reuse';
+        render();
+      });
+      document.querySelectorAll('[data-open-teacher-assignment]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.openPanel = null;
+          state.teacherAssignmentId = button.dataset.openTeacherAssignment;
+          render();
+        });
+      });
+
+      if (panel === 'new') bindNewAssignmentForm();
+      if (panel === 'reuse') bindReuseAssignmentForm();
+    }
+
+    function renderTeacherSubmissions(teacher, assignment) {
+      const submissions = getSubmissions()
+        .filter((submission) => submission.assignmentId === assignment.id)
+        .sort((a, b) => Number(Boolean(a.feedbackAt)) - Number(Boolean(b.feedbackAt)) || String(b.submittedAt || '').localeCompare(String(a.submittedAt || '')));
+      app.innerHTML = `
+        <section aria-labelledby="teacher-submissions-title">
+          <button type="button" class="button secondary" id="teacher-back-button">← 과제 목록</button>
+          <div class="page-heading" style="margin-top:22px">
+            <div>
+              <p class="eyebrow">Teacher feedback</p>
+              <h1 id="teacher-submissions-title">${escapeHtml(assignment.title)}</h1>
+              <p>${escapeHtml(assignment.description || '설명이 없습니다.')} · 제출 글 ${submissions.length}개</p>
+            </div>
+          </div>
+          <div class="submission-list">
+            ${submissions.length ? submissions.map(teacherSubmissionCard).join('') : emptySubmissionState()}
+          </div>
+        </section>`;
+
+      document.getElementById('teacher-back-button').addEventListener('click', () => {
+        state.teacherAssignmentId = null;
+        render();
+      });
+      document.querySelectorAll('[data-save-feedback]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const submissionId = button.dataset.saveFeedback;
+          const field = document.querySelector(`[data-feedback-field="${submissionId}"]`);
+          const message = document.querySelector(`[data-feedback-message="${submissionId}"]`);
+          const feedback = field.value.trim();
+          if (!feedback) {
+            message.textContent = '피드백 내용을 입력해 주세요.';
+            return;
+          }
+          const submissions = getSubmissions();
+          const index = submissions.findIndex((submission) => submission.id === submissionId);
+          if (index === -1) return;
+          submissions[index] = { ...submissions[index], feedback, feedbackAt: new Date().toISOString() };
+          write(STORAGE_KEYS.submissions, submissions);
+          render();
+        });
+      });
+    }
+
+    function teacherSubmissionCard(submission) {
+      const completed = Boolean(submission.feedbackAt);
+      const body = submission.body || (Array.isArray(submission.answers) ? submission.answers.map((answer) => answer.a).filter(Boolean).join('\n') : '');
+      return `
+        <article class="submission-card">
+          <div class="submission-card-header">
+            <div>
+              <h3>${escapeHtml(submission.studentName || '이름 없는 학생')}</h3>
+              <div class="submission-time">제출 시간 · ${escapeHtml(formatSubmittedAt(submission.submittedAt || submission.createdAt || submission.updatedAt))}</div>
+            </div>
+            <span class="status-pill ${completed ? 'done' : ''}">${completed ? '피드백 완료' : '미피드백'}</span>
+          </div>
+          <div class="submission-content">${escapeHtml(body || '작성한 내용 없이 제출됨')}</div>
+          ${completed ? `
+            <div class="feedback-saved">
+              <strong>저장된 피드백</strong>
+              <p>${escapeHtml(submission.feedback || '피드백 내용 없음')}</p>
+              <div class="submission-time">저장 시간 · ${escapeHtml(formatSubmittedAt(submission.feedbackAt))}</div>
+            </div>` : `
+            <label for="feedback-${escapeHtml(submission.id)}">피드백</label>
+            <textarea id="feedback-${escapeHtml(submission.id)}" data-feedback-field="${escapeHtml(submission.id)}" placeholder="학생의 글을 읽고 피드백을 남겨 주세요."></textarea>
+            <p class="form-message" data-feedback-message="${escapeHtml(submission.id)}" role="alert"></p>
+            <button type="button" class="button" data-save-feedback="${escapeHtml(submission.id)}">피드백 저장</button>`}
+        </article>`;
+    }
+
+    function emptySubmissionState() {
+      return '<div class="empty-state"><strong>아직 제출된 글이 없습니다.</strong><span>학생이 글을 제출하면 이곳에서 확인할 수 있어요.</span></div>';
+    }
+
+    function newAssignmentPanel() {
+      return `
+        <section class="panel" aria-labelledby="new-assignment-title">
+          <div class="panel-header">
+            <div>
+              <h2 id="new-assignment-title">새 과제 만들기</h2>
+              <p>학생이 확인할 과제 제목, 설명, 마감일을 정해 주세요.</p>
+            </div>
+            <button type="button" class="button secondary" data-close-panel>닫기</button>
+          </div>
+          <form id="new-assignment-form" novalidate>
+            <div class="form-grid">
+              <div class="field">
+                <label for="new-title">과제 제목</label>
+                <input id="new-title" required placeholder="예: 엔트로피, 오늘 이해한 것">
+              </div>
+              <div class="field">
+                <label for="new-due-date">마감일</label>
+                <input id="new-due-date" type="date" min="${todayValue()}" required>
+              </div>
+              <div class="field wide">
+                <label for="new-description">과제 설명</label>
+                <textarea id="new-description" required placeholder="학생이 무엇을 생각하고 써야 하는지 안내해 주세요."></textarea>
+              </div>
+            </div>
+            <p id="new-message" class="form-message" role="alert"></p>
+            <div class="form-actions">
+              <button type="submit" class="button">과제 저장</button>
+              <button type="button" class="button secondary" data-close-panel>취소</button>
+            </div>
+          </form>
+        </section>`;
+    }
+
+    function reuseAssignmentPanel(assignments) {
+      return `
+        <section class="panel" aria-labelledby="reuse-assignment-title">
+          <div class="panel-header">
+            <div>
+              <h2 id="reuse-assignment-title">이전 과제 다시 사용</h2>
+              <p>제목과 설명을 가져와 새 과제로 등록합니다. 제출 글과 피드백은 복사하지 않습니다.</p>
+            </div>
+            <button type="button" class="button secondary" data-close-panel>닫기</button>
+          </div>
+          ${assignments.length ? `
+            <form id="reuse-assignment-form" novalidate>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="source-assignment">다시 사용할 과제</label>
+                  <select id="source-assignment" required>
+                    <option value="">과제를 선택하세요</option>
+                    ${assignments.map((assignment) => `<option value="${escapeHtml(assignment.id)}">${escapeHtml(assignment.title)}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="reuse-due-date">새 마감일</label>
+                  <input id="reuse-due-date" type="date" min="${todayValue()}" required>
+                </div>
+              </div>
+              <p id="reuse-preview" class="help">과제를 선택하면 가져올 제목과 설명이 여기에 표시됩니다.</p>
+              <p id="reuse-message" class="form-message" role="alert"></p>
+              <div class="form-actions">
+                <button type="submit" class="button">새 과제로 저장</button>
+                <button type="button" class="button secondary" data-close-panel>취소</button>
+              </div>
+            </form>` : emptyReuseState()}
+        </section>`;
+    }
+
+    function emptyReuseState() {
+      return '<div class="empty-state"><strong>다시 사용할 과제가 없습니다.</strong><span>먼저 새 과제를 하나 만들어 주세요.</span></div>';
+    }
+
+    function emptyAssignmentState() {
+      return '<div class="empty-state"><strong>아직 만든 과제가 없습니다.</strong><span>첫 과제를 만들면 이곳에서 제출 현황을 확인할 수 있어요.</span></div>';
+    }
+
+    function assignmentCard(assignment) {
+      const stats = assignmentStats(assignment.id);
+      return `
+        <article class="assignment-card" data-assignment-id="${escapeHtml(assignment.id)}">
+          <h3>${escapeHtml(assignment.title)}</h3>
+          <p class="assignment-description">${escapeHtml(assignment.description || '설명이 없습니다.')}</p>
+          <div class="assignment-meta" aria-label="${escapeHtml(assignment.title)} 현황">
+            <span class="meta-chip">제출 인원 <strong>${stats.submitted}명</strong></span>
+            <span class="meta-chip">미피드백 <strong>${stats.waiting}개</strong></span>
+          </div>
+          <div class="due-date"><span aria-hidden="true">◷</span><span>마감일 · ${escapeHtml(formatDueDate(assignment.dueDate))}</span></div>
+          <div class="assignment-card-actions">
+            <button type="button" class="button secondary" data-open-teacher-assignment="${escapeHtml(assignment.id)}" ${stats.submitted ? '' : 'disabled'}>제출 글 보기</button>
+          </div>
+        </article>`;
+    }
+
+    function bindCloseButtons() {
+      document.querySelectorAll('[data-close-panel]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.openPanel = null;
+          render();
+        });
+      });
+    }
+
+    function bindNewAssignmentForm() {
+      bindCloseButtons();
+      document.getElementById('new-assignment-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const title = document.getElementById('new-title').value.trim();
+        const description = document.getElementById('new-description').value.trim();
+        const dueDate = document.getElementById('new-due-date').value;
+        const message = document.getElementById('new-message');
+        if (!title || !description || !dueDate) {
+          message.textContent = '제목, 설명, 마감일을 모두 입력해 주세요.';
+          return;
+        }
+        saveAssignment(title, description, dueDate, null);
+        state.openPanel = null;
+        render();
+      });
+    }
+
+    function bindReuseAssignmentForm() {
+      bindCloseButtons();
+      const select = document.getElementById('source-assignment');
+      const preview = document.getElementById('reuse-preview');
+      select.addEventListener('change', () => {
+        const source = getAssignments().find((assignment) => assignment.id === select.value);
+        preview.textContent = source ? `가져올 제목: ${source.title} · 설명: ${source.description}` : '과제를 선택하면 가져올 제목과 설명이 여기에 표시됩니다.';
+      });
+      document.getElementById('reuse-assignment-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const sourceId = select.value;
+        const dueDate = document.getElementById('reuse-due-date').value;
+        const message = document.getElementById('reuse-message');
+        if (!sourceId || !dueDate) {
+          message.textContent = '이전 과제와 새 마감일을 선택해 주세요.';
+          return;
+        }
+        saveAssignment('', '', dueDate, sourceId);
+        state.openPanel = null;
+        render();
+      });
+    }
+
+    ensureAccounts();
+    render();
+  </script>
+</body>
+</html>
